@@ -13,6 +13,7 @@
 #  limitations under the License.
 import os
 import sys
+
 if sys.version_info.major == 2:
     import ConfigParser as configparser
     from StringIO import StringIO
@@ -34,7 +35,6 @@ from .service import NoseServiceClass
 from nose.pyversion import exc_to_unicode, force_unicode
 from nose.util import safe_str, isclass
 
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 # Disabled because we've already had a overloaded capturing of the logs
@@ -50,7 +50,7 @@ class RPNoseLogHandler(MyMemoryHandler):
                    '-nose_reportportal.service']
         if extended_filters:
             filters.extend(extended_filters)
-        super(RPNoseLogHandler, self).__init__(logformat, logdatefmt, filters)
+        super().__init__(logformat, logdatefmt, filters)
 
 
 class ReportPortalPlugin(Plugin):
@@ -61,7 +61,7 @@ class ReportPortalPlugin(Plugin):
     name = "reportportal"
 
     def __init__(self):
-        super(ReportPortalPlugin, self).__init__()
+        super().__init__()
         self.stdout = []
         self._buf = None
         self.filters = None
@@ -70,7 +70,7 @@ class ReportPortalPlugin(Plugin):
         """
         Add options to command line.
         """
-        super(ReportPortalPlugin, self).options(parser, env)
+        super().options(parser, env)
         parser.add_option('--rp-config-file',
                           action='store',
                           default=env.get('NOSE_RP_CONFIG_FILE'),
@@ -101,6 +101,11 @@ class ReportPortalPlugin(Plugin):
                           dest='ignore_loggers',
                           help='logger filter')
 
+        parser.add_option('--rp-logging-level',
+                          action='store',
+                          default="",
+                          dest='rp_logging_level',
+                          help='logger level')
 
     def configure(self, options, conf):
         """
@@ -113,7 +118,6 @@ class ReportPortalPlugin(Plugin):
         super(ReportPortalPlugin, self).configure(options, conf)
 
         if self.enabled:
-
             self.conf = conf
             self.rp_config = options.rp_config
             config = configparser.ConfigParser(
@@ -123,14 +127,13 @@ class ReportPortalPlugin(Plugin):
                     'rp_project': '',
                     'rp_launch': '{}',
                     'rp_launch_tags': '',
-                    'rp_launch_description': ''
+                    'rp_launch_description': '',
+                    'rp_logging_level': ''
                 }
             )
             config.read(self.rp_config)
 
-            if options.rp_launch:
-                slaunch = options.rp_launch
-            else:
+            if (not options.rp_launch) and (config.get("base", "rp_launch") != '{}'):
                 slaunch = "(unit tests)"
                 if options.attr:
                     if "type=integration" in options.attr:
@@ -140,8 +143,10 @@ class ReportPortalPlugin(Plugin):
 
             self.rp_mode = options.rp_mode if options.rp_mode in ("DEFAULT", "DEBUG") else "DEFAULT"
 
-            if options.ignore_loggers and isinstance(options.ignore_loggers, basestring):
+            if options.ignore_loggers:
                 self.filters = [x.strip() for x in options.ignore_loggers.split(",")]
+
+            self.loglevel = options.rp_logging_level
 
             self.clear = True
             if "base" in config.sections():
@@ -149,9 +154,10 @@ class ReportPortalPlugin(Plugin):
                 self.rp_endpoint = config.get("base", "rp_endpoint")
                 os.environ["RP_ENDPOINT"] = self.rp_endpoint
                 self.rp_project = config.get("base", "rp_project")
-                self.rp_launch = config.get("base", "rp_launch").format(slaunch)
+                self.rp_launch = options.rp_launch or config.get("base", "rp_launch").format(slaunch)
                 self.rp_launch_tags = config.get("base", "rp_launch_tags")
-                self.rp_launch_description = options.rp_launch_description or config.get("base", "rp_launch_description")
+                self.rp_launch_description = options.rp_launch_description or config.get("base",
+                                                                                         "rp_launch_description")
 
     def setupLoghandler(self):
         # setup our handler with root logger
@@ -190,7 +196,6 @@ class ReportPortalPlugin(Plugin):
                                   token=self.rp_uuid,
                                   ignore_errors=False)
 
-
         # Start launch.
         self.launch = self.service.start_launch(name=self.rp_launch,
                                                 description=self.rp_launch_description,
@@ -219,7 +224,6 @@ class ReportPortalPlugin(Plugin):
            via ``python setup.py test``, this method may be called
            **before** the default report output is sent.
         """
-
         # Finish launch.
         self.service.finish_launch()
 
@@ -280,7 +284,7 @@ class ReportPortalPlugin(Plugin):
                 return True
         return False
 
-    def addError(self, test,  err):
+    def addError(self, test, err):
         """Called when a test raises an uncaught exception. DO NOT return a
         value unless you want to stop other plugins from seeing that the
         test has raised an error.
@@ -403,46 +407,42 @@ class ReportPortalPlugin(Plugin):
         test.capturedLogging = self.formatLogRecords()
 
         if test.capturedOutput:
-            try: 
+            try:
                 self.service.post_log(safe_str(test.capturedOutput))
             except Exception:
                 log.exception('Unexpected error during sending capturedOutput.')
 
         if test.capturedLogging:
             for x in test.capturedLogging:
-                try: 
+                try:
                     self.service.post_log(safe_str(x))
                 except Exception:
                     log.exception('Unexpected error during sending capturedLogging.')
 
         if test.errors:
-            try: 
+            try:
                 self.service.post_log(safe_str(test.errors[0]))
                 self.service.post_log(safe_str(test.errors[1]), loglevel="ERROR")
             except Exception:
                 log.exception('Unexpected error during sending errors.')
 
-        if sys.version_info.major == 2:
-            self._stop_test_2(test)
-        elif sys.version_info.major == 3:
-            self._stop_test_3(test)
+        self._stop_test(test)
 
-
-    def _stop_test_2(self, test):
-        if test.status == "skipped":
-            self.service.finish_nose_item(status="SKIPPED")
-        elif test.status == "success":
+    def _stop_test(self, test):
+        if (hasattr(test.test._outcome, 'skipped') and test.test._outcome.skipped) or (test.status == "skipped"):
+            test_method_name = getattr(test.test, test.test._testMethodName)
+            reason = test_method_name.__unittest_skip_why__
+            if "jira" in reason:
+                issue_type = "PRODUCT_BUG"
+            else:
+                issue_type = "NO_DEFECT"
+            issue = {"issue_type": issue_type,
+                     "comment": test_method_name.__unittest_skip_why__}
+            self.service.finish_nose_item(status="SKIPPED", issue=issue)
+        elif (hasattr(test.test._outcome, 'success') and test.test._outcome.success) or (test.status == "success"):
             self.service.finish_nose_item(status="PASSED")
         else:
             self.service.finish_nose_item(status="FAILED")
 
     def describeTest(self, test):
         return test.test._testMethodDoc
-
-    def _stop_test_3(self, test):
-        if test.test._outcome.skipped:
-            self.service.finish_nose_item(status="SKIPPED")
-        elif test.test._outcome.success:
-            self.service.finish_nose_item(status="PASSED")
-        else:
-            self.service.finish_nose_item(status="FAILED")
