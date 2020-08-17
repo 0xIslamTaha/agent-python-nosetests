@@ -66,6 +66,8 @@ If you like to override some of parameters above from command line, or from CI e
 
 `--rp-issue-tracker` to label the skipped test cases as a PRODUCT_BUG in case of the skipping reason has this value.  
 
+`--rp-uuid` to change the uuid value (mainly for CI/CD)
+
 Example:
 
 ```

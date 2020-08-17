@@ -77,6 +77,12 @@ class ReportPortalPlugin(Plugin):
                           dest='rp_config',
                           help='config file path')
 
+        parser.add_option('--rp-uuid',
+                          action='store',
+                          default="",
+                          dest='rp_uuid',
+                          help='endpoint uuid')
+
         parser.add_option('--rp-launch',
                           action='store',
                           default=None,
@@ -158,7 +164,7 @@ class ReportPortalPlugin(Plugin):
 
             self.clear = True
             if "base" in config.sections():
-                self.rp_uuid = config.get("base", "rp_uuid")
+                self.rp_uuid = options.rp_uuid or config.get("base", "rp_uuid")
                 self.rp_endpoint = config.get("base", "rp_endpoint")
                 os.environ["RP_ENDPOINT"] = self.rp_endpoint
                 self.rp_project = config.get("base", "rp_project")
