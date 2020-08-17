@@ -107,6 +107,12 @@ class ReportPortalPlugin(Plugin):
                           dest='rp_logging_level',
                           help='logger level')
 
+        parser.add_option('--rp-issue-tracker',
+                          action='store',
+                          default="atlassian.net",
+                          dest='rp_issue_tracker',
+                          help='issue tracker to raise produce bugs')
+
     def configure(self, options, conf):
         """
         Configure plugin.
@@ -128,7 +134,8 @@ class ReportPortalPlugin(Plugin):
                     'rp_launch': '{}',
                     'rp_launch_tags': '',
                     'rp_launch_description': '',
-                    'rp_logging_level': ''
+                    'rp_logging_level': '',
+                    'rp_issue_tracker': ''
                 }
             )
             config.read(self.rp_config)
@@ -147,6 +154,7 @@ class ReportPortalPlugin(Plugin):
                 self.filters = [x.strip() for x in options.ignore_loggers.split(",")]
 
             self.loglevel = options.rp_logging_level
+            self.rp_issue_tracker = options.rp_issue_tracker
 
             self.clear = True
             if "base" in config.sections():
@@ -432,7 +440,7 @@ class ReportPortalPlugin(Plugin):
         if (hasattr(test.test._outcome, 'skipped') and test.test._outcome.skipped) or (test.status == "skipped"):
             test_method_name = getattr(test.test, test.test._testMethodName)
             reason = test_method_name.__unittest_skip_why__
-            if "jira" in reason:
+            if self.rp_issue_tracker in reason:
                 issue_type = "PRODUCT_BUG"
             else:
                 issue_type = "NO_DEFECT"

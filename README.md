@@ -64,6 +64,8 @@ If you like to override some of parameters above from command line, or from CI e
 
 `--ignore-loggers` to ignore external loggers and not send them in report portal. Specify which statements to filter. If the output is too verbose, use this option to filter out needless output.
 
+`--rp-issue-tracker` to label the skipped test cases as a PRODUCT_BUG in case of the skipping reason has this value.  
+
 Example:
 
 ```
