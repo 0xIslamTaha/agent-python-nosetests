@@ -1,6 +1,14 @@
 agent-python-nose
 ===================
 
+# Changes in this fork 0.0.7: 
+ - It supports V4
+ - added more options to the plugin
+    - `--rp-uuid`
+    - `--rp-issue-tracker`
+    - `--rp-logging-level`
+    - `--rp-launch-description`
+
 
 Nose plugin for reporting test results of Nose to the 'Reportal Portal'.
 
@@ -26,11 +34,11 @@ Prepare the config file `rp.ini` in root directory of tests
 
 The `rp.ini` file should have next mandatory fields:
 
-`rp_uuid` - value could be found in the User Profile section
-`rp_project` - name of project in Report Potal
-`rp_endpoint` - address of Report Portal Server, can be found in a environment variable "RP_ENDPOINT" after tests' run
-`rp_launch` - name of a launch
-`rp_launch_description` - description of a launch
+- `rp_uuid` value could be found in the User Profile section
+- `rp_project` name of project in Report Potal
+- `rp_endpoint` address of Report Portal Server, can be found in a environment variable "RP_ENDPOINT" after tests' run
+- `rp_launch` name of a launch
+- `rp_launch_description` description of a launch
 
 Example of `rp.ini`:
 
@@ -47,9 +55,7 @@ rp_launch_description = Smoke test
 You need to add --rp-config-file to point to config file:
 
 ```bash
-
 --rp-config-file rp.ini
-
 ```
 
 If you like to override some of parameters above from command line, or from CI environment based on your build, then pass
@@ -76,7 +82,7 @@ Example:
  If any logger name is prefixed with a minus, eg filter=-foo, it will be excluded rather than included.   
 ```
 
-The following loggers are ignored 
+The following loggers are ignored --rp-launch-description
 'nose' 
 'reportportal_client.service_async' 
 'reportportal_client.service' ,
@@ -90,7 +96,7 @@ by default.
 To run test with Report Portal you must provide '--with-reportportal' flag:
 
 ```bash
-nosetests --with-reportportal --rp-config-file rp.ini
+nosetests --with-reportportal --rp-config-file rp.ini --rp-uuid $UUID --rp-launch-description=$RUN_REF-$RUN_ID-$RUN_NUMBER --rp-logging-level=WARNING
 ```
 
 # Copyright Notice
